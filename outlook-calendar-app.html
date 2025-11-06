@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Email & Calendar</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            background: #f5f5f5;
+        }
+
+        .app-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .top-bar {
+            background: #0078d4;
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .top-bar h1 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 8px;
+        }
+
+        .toggle-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .toggle-btn.active {
+            background: white;
+            color: #0078d4;
+        }
+
+        .content-wrapper {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .email-view, .calendar-view {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.3s ease;
+            background: white;
+        }
+
+        .email-view {
+            transform: translateX(0);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .calendar-view {
+            transform: translateX(100%);
+            overflow-y: auto;
+        }
+
+        .content-wrapper.show-calendar .email-view {
+            transform: translateX(-100%);
+        }
+
+        .content-wrapper.show-calendar .calendar-view {
+            transform: translateX(0);
+        }
+
+        .email-form {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .form-section {
+            padding: 0 16px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .form-field {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+        }
+
+        .form-field label {
+            width: 50px;
+            color: #666;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .form-field input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .form-field input::placeholder {
+            color: #999;
+        }
+
+        .body-section {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .body-section textarea {
+            width: 100%;
+            height: 100%;
+            border: none;
+            outline: none;
+            font-size: 16px;
+            font-family: inherit;
+            resize: none;
+            color: #333;
+        }
+
+        .body-section textarea::placeholder {
+            color: #999;
+        }
+
+        .action-bar {
+            padding: 12px 16px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #0078d4;
+            color: white;
+        }
+
+        .btn-primary:active {
+            background: #106ebe;
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:active {
+            background: #e0e0e0;
+            transform: scale(0.98);
+        }
+
+        .login-section {
+            padding: 32px 16px;
+            text-align: center;
+        }
+
+        .login-section h2 {
+            font-size: 20px;
+            margin-bottom: 16px;
+            color: #333;
+        }
+
+        .login-section p {
+            color: #666;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .btn-login {
+            background: #0078d4;
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .btn-login:active {
+            background: #106ebe;
+            transform: scale(0.98);
+        }
+
+        .calendar-header {
+            padding: 16px;
+            background: #f9f9f9;
+            border-bottom: 1px solid #e0e0e0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .calendar-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .calendar-nav button {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .calendar-nav button:active {
+            background: #f0f0f0;
+        }
+
+        .calendar-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .weekday-headers {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .weekday {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+            padding: 8px 0;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+            border-radius: 8px;
+            cursor: pointer;
+            position: relative;
+            background: white;
+            border: 1px solid #f0f0f0;
+        }
+
+        .calendar-day.other-month {
+            color: #ccc;
+        }
+
+        .calendar-day.today {
+            background: #0078d4;
+            color: white;
+            font-weight: 600;
+        }
+
+        .calendar-day.has-event::after {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            width: 4px;
+            height: 4px;
+            background: #0078d4;
+            border-radius: 50%;
+        }
+
+        .calendar-day.today.has-event::after {
+            background: white;
+        }
+
+        .calendar-day:active {
+            background: #f0f0f0;
+        }
+
+        .calendar-day.today:active {
+            background: #106ebe;
+        }
+
+        .day-number {
+            font-size: 16px;
+        }
+
+        .events-section {
+            padding: 16px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .event-card {
+            background: white;
+            border-left: 4px solid #0078d4;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .event-time {
+            font-size: 14px;
+            color: #0078d4;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .event-title {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .event-location {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .no-events {
+            text-align: center;
+            color: #999;
+            padding: 32px;
+            font-size: 14px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 32px;
+            color: #666;
+        }
+
+        .fab {
+            position: fixed;
+            bottom: 80px;
+            right: 16px;
+            width: 56px;
+            height: 56px;
+            background: #0078d4;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .content-wrapper.show-calendar .fab {
+            display: flex;
+        }
+
+        .fab:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: #f9f9f9;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .user-email {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .btn-logout {
+            background: #f0f0f0;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .btn-logout:active {
+            background: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="top-bar">
+            <h1 id="topTitle">New Email</h1>
+            <div class="view-toggle">
+                <button class="toggle-btn active" id="emailBtn">Email</button>
+                <button class="toggle-btn" id="calendarBtn">Calendar</button>
+            </div>
+        </div>
+
+        <div class="content-wrapper" id="contentWrapper">
+            <!-- Email View -->
+            <div class="email-view">
+                <div class="email-form">
+                    <div class="form-section">
+                        <div class="form-field">
+                            <label>To:</label>
+                            <input type="email" placeholder="Recipients" id="toField">
+                        </div>
+                        <div class="form-field">
+                            <label>Cc:</label>
+                            <input type="email" placeholder="Optional" id="ccField">
+                        </div>
+                        <div class="form-field">
+                            <label>Subject:</label>
+                            <input type="text" placeholder="Subject" id="subjectField">
+                        </div>
+                    </div>
+                    <div class="body-section">
+                        <textarea placeholder="Compose your email..." id="bodyField"></textarea>
+                    </div>
+                </div>
+                <div class="action-bar">
+                    <button class="btn btn-secondary" id="discardBtn">Discard</button>
+                    <button class="btn btn-primary" id="sendBtn">Send</button>
+                </div>
+            </div>
+
+            <!-- Calendar View -->
+            <div class="calendar-view">
+                <div id="loginSection" class="login-section">
+                    <h2>Connect Your Outlook Calendar</h2>
+                    <p>Sign in with your Microsoft account to view your real Outlook calendar events while composing emails.</p>
+                    <button class="btn-login" id="loginBtn">Sign in with Microsoft</button>
+                </div>
+
+                <div id="calendarContent" style="display: none;">
+                    <div class="user-info" id="userInfo" style="display: none;">
+                        <span class="user-email" id="userEmail"></span>
+                        <button class="btn-logout" id="logoutBtn">Logout</button>
+                    </div>
+                    
+                    <div class="calendar-header">
+                        <div class="calendar-nav">
+                            <button id="prevMonth">‹</button>
+                            <div class="calendar-title" id="calendarTitle">November 2025</div>
+                            <button id="nextMonth">›</button>
+                        </div>
+                        <div class="weekday-headers">
+                            <div class="weekday">Sun</div>
+                            <div class="weekday">Mon</div>
+                            <div class="weekday">Tue</div>
+                            <div class="weekday">Wed</div>
+                            <div class="weekday">Thu</div>
+                            <div class="weekday">Fri</div>
+                            <div class="weekday">Sat</div>
+                        </div>
+                        <div class="calendar-grid" id="calendarGrid"></div>
+                    </div>
+                    <div class="events-section">
+                        <div class="section-title" id="eventsTitle">Today's Events</div>
+                        <div id="eventsContainer">
+                            <div class="loading">Loading events...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button class="fab" id="fabBtn">✉</button>
+    </div>
+
+    <!-- Microsoft Authentication Library -->
+    <script src="https://alcdn.msauth.net/browser/2.30.0/js/msal-browser.min.js"></script>
+    
+    <script>
+        // MSAL Configuration
+        // YOU NEED TO REGISTER YOUR APP AT: https://portal.azure.com
+        const msalConfig = {
+            auth: {
+                clientId: '3b9ccd6e-d7c8-4492-8e40-f7a9342028c1',
+                authority: 'https://login.microsoftonline.com/common',
+                redirectUri: window.location.origin // Or your specific redirect URI
+            },
+            cache: {
+                cacheLocation: 'localStorage',
+                storeAuthStateInCookie: false
+            }
+        };
+
+        const loginRequest = {
+            scopes: ['User.Read', 'Calendars.Read']
+        };
+
+        let msalInstance;
+        let accessToken = null;
+        let currentView = 'email';
+        let currentDate = new Date();
+        let calendarEvents = {};
+        let selectedDate = null;
+
+        // Initialize MSAL
+        try {
+            msalInstance = new msal.PublicClientApplication(msalConfig);
+        } catch (error) {
+            console.error('MSAL initialization error:', error);
+        }
+
+        // Elements
+        const contentWrapper = document.getElementById('contentWrapper');
+        const emailBtn = document.getElementById('emailBtn');
+        const calendarBtn = document.getElementById('calendarBtn');
+        const topTitle = document.getElementById('topTitle');
+        const fabBtn = document.getElementById('fabBtn');
+        const loginSection = document.getElementById('loginSection');
+        const calendarContent = document.getElementById('calendarContent');
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const userInfo = document.getElementById('userInfo');
+        const userEmail = document.getElementById('userEmail');
+        const prevMonthBtn = document.getElementById('prevMonth');
+        const nextMonthBtn = document.getElementById('nextMonth');
+        const calendarTitle = document.getElementById('calendarTitle');
+        const calendarGrid = document.getElementById('calendarGrid');
+        const eventsContainer = document.getElementById('eventsContainer');
+        const eventsTitle = document.getElementById('eventsTitle');
+
+        // Check if user is already logged in
+        async function checkLoginStatus() {
+            const accounts = msalInstance.getAllAccounts();
+            if (accounts.length > 0) {
+                msalInstance.setActiveAccount(accounts[0]);
+                try {
+                    const response = await msalInstance.acquireTokenSilent({
+                        ...loginRequest,
+                        account: accounts[0]
+                    });
+                    accessToken = response.accessToken;
+                    await showCalendarContent(accounts[0]);
+                } catch (error) {
+                    console.error('Silent token acquisition failed:', error);
+                }
+            }
+        }
+
+        // Login
+        loginBtn.addEventListener('click', async () => {
+            try {
+                const response = await msalInstance.loginPopup(loginRequest);
+                accessToken = response.accessToken;
+                await showCalendarContent(response.account);
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Login failed. Please try again.');
+            }
+        });
+
+        // Logout
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                await msalInstance.logoutPopup();
+                accessToken = null;
+                loginSection.style.display = 'block';
+                calendarContent.style.display = 'none';
+                userInfo.style.display = 'none';
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        });
+
+        // Show calendar content after login
+        async function showCalendarContent(account) {
+            loginSection.style.display = 'none';
+            calendarContent.style.display = 'block';
+            userInfo.style.display = 'flex';
+            userEmail.textContent = account.username;
+            
+            renderCalendar();
+            await loadCalendarEvents();
+        }
+
+        // Load calendar events from Microsoft Graph API
+        async function loadCalendarEvents() {
+            if (!accessToken) return;
+
+            const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+            
+            const startISO = startDate.toISOString();
+            const endISO = endDate.toISOString();
+
+            try {
+                const response = await fetch(
+                    `https://graph.microsoft.com/v1.0/me/calendar/calendarView?startDateTime=${startISO}&endDateTime=${endISO}`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+
+                if (!response.ok) throw new Error('Failed to fetch events');
+
+                const data = await response.json();
+                processEvents(data.value);
+                renderCalendar();
+                
+                // Show today's events by default
+                const today = new Date();
+                const todayStr = formatDate(today);
+                showDayEvents(todayStr);
+            } catch (error) {
+                console.error('Error loading events:', error);
+                eventsContainer.innerHTML = '<div class="no-events">Failed to load events</div>';
+            }
+        }
+
+        // Process events into our data structure
+        function processEvents(events) {
+            calendarEvents = {};
+            
+            events.forEach(event => {
+                const startDate = new Date(event.start.dateTime);
+                const dateStr = formatDate(startDate);
+                
+                if (!calendarEvents[dateStr]) {
+                    calendarEvents[dateStr] = [];
+                }
+                
+                const endDate = new Date(event.end.dateTime);
+                calendarEvents[dateStr].push({
+                    time: formatTimeRange(startDate, endDate),
+                    title: event.subject,
+                    location: event.location?.displayName || 'No location',
+                    isAllDay: event.isAllDay
+                });
+            });
+        }
+
+        // Format date as YYYY-MM-DD
+        function formatDate(date) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        }
+
+        // Format time range
+        function formatTimeRange(start, end) {
+            const formatTime = (date) => {
+                let hours = date.getHours();
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12 || 12;
+                return `${hours}:${minutes} ${ampm}`;
+            };
+            
+            return `${formatTime(start)} - ${formatTime(end)}`;
+        }
+
+        // View toggle
+        function switchView(view) {
+            currentView = view;
+            if (view === 'calendar') {
+                contentWrapper.classList.add('show-calendar');
+                emailBtn.classList.remove('active');
+                calendarBtn.classList.add('active');
+                topTitle.textContent = 'Calendar';
+            } else {
+                contentWrapper.classList.remove('show-calendar');
+                emailBtn.classList.add('active');
+                calendarBtn.classList.remove('active');
+                topTitle.textContent = 'New Email';
+            }
+        }
+
+        emailBtn.addEventListener('click', () => switchView('email'));
+        calendarBtn.addEventListener('click', () => switchView('calendar'));
+        fabBtn.addEventListener('click', () => switchView('email'));
+
+        // Calendar rendering
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+            calendarTitle.textContent = `${monthNames[month]} ${year}`;
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+            calendarGrid.innerHTML = '';
+
+            // Previous month days
+            for (let i = firstDay - 1; i >= 0; i--) {
+                const day = daysInPrevMonth - i;
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'calendar-day other-month';
+                dayDiv.innerHTML = `<span class="day-number">${day}</span>`;
+                calendarGrid.appendChild(dayDiv);
+            }
+
+            // Current month days
+            const today = new Date();
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'calendar-day';
+                
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                
+                if (year === today.getFullYear() && 
+                    month === today.getMonth() && 
+                    day === today.getDate()) {
+                    dayDiv.classList.add('today');
+                }
+                
+                if (calendarEvents[dateStr] && calendarEvents[dateStr].length > 0) {
+                    dayDiv.classList.add('has-event');
+                }
+                
+                dayDiv.innerHTML = `<span class="day-number">${day}</span>`;
+                dayDiv.addEventListener('click', () => showDayEvents(dateStr));
+                calendarGrid.appendChild(dayDiv);
+            }
+
+            // Next month days
+            const totalCells = calendarGrid.children.length;
+            const remainingCells = 35 - totalCells;
+            for (let day = 1; day <= remainingCells; day++) {
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'calendar-day other-month';
+                dayDiv.innerHTML = `<span class="day-number">${day}</span>`;
+                calendarGrid.appendChild(dayDiv);
+            }
+        }
+
+        function showDayEvents(dateStr) {
+            selectedDate = dateStr;
+            const date = new Date(dateStr + 'T00:00:00');
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+            
+            eventsTitle.textContent = `${dayNames[date.getDay()]}, ${monthNames[date.getMonth()]} ${date.getDate()}`;
+            
+            const dayEvents = calendarEvents[dateStr];
+            
+            if (dayEvents && dayEvents.length > 0) {
+                eventsContainer.innerHTML = dayEvents.map(event => `
+                    <div class="event-card">
+                        <div class="event-time">${event.isAllDay ? 'All day' : event.time}</div>
+                        <div class="event-title">${event.title}</div>
+                        <div class="event-location">${event.location}</div>
+                    </div>
+                `).join('');
+            } else {
+                eventsContainer.innerHTML = '<div class="no-events">No events scheduled</div>';
+            }
+        }
+
+        prevMonthBtn.addEventListener('click', async () => {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            renderCalendar();
+            if (accessToken) await loadCalendarEvents();
+        });
+
+        nextMonthBtn.addEventListener('click', async () => {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar();
+            if (accessToken) await loadCalendarEvents();
+        });
+
+        // Email actions
+        document.getElementById('sendBtn').addEventListener('click', () => {
+            const to = document.getElementById('toField').value;
+            const subject = document.getElementById('subjectField').value;
+            const body = document.getElementById('bodyField').value;
+            
+            if (!to || !subject) {
+                alert('Please fill in recipient and subject');
+                return;
+            }
+            
+            alert('Email sent! (Demo)');
+            document.getElementById('toField').value = '';
+            document.getElementById('ccField').value = '';
+            document.getElementById('subjectField').value = '';
+            document.getElementById('bodyField').value = '';
+        });
+
+        document.getElementById('discardBtn').addEventListener('click', () => {
+            if (confirm('Discard this email?')) {
+                document.getElementById('toField').value = '';
+                document.getElementById('ccField').value = '';
+                document.getElementById('subjectField').value = '';
+                document.getElementById('bodyField').value = '';
+            }
+        });
+
+        // Initialize
+        checkLoginStatus();
+    </script>
+</body>
+</html>
